@@ -5,6 +5,11 @@ import torch.nn.functional as F
 from torchvision import io
 import torch.nn as nn
 from tqdm import tqdm
+import torchvision.transforms.functional as TF
+import os
+from PIL import Image
+from pathlib import Path
+
 
 
 def generate_image_tensor(image_path):
@@ -56,8 +61,6 @@ def style_loss(style_features, gen_features, layer_weights):
         style_gram = gram_matrix(style_feature)
         gen_gram = gram_matrix(gen_feature)
         
-        
-        
         _, num_channels, width, height = style_feature.shape
         loss += F.mse_loss(style_gram, gen_gram) / (4 * num_channels**2 * width * height) * layer_weight
 
@@ -92,20 +95,33 @@ def get_best_device():
         return torch.device("cpu")
 
 
+
+def save_image(tensor, path):
+    image = tensor.permute(1, 2, 0).numpy()
+    image = (image * 255).astype('uint8')
+    
+    path = Path(path)
+    if not path.parent.exists():
+        path.parent.mkdir(parents=True)
+    Image.fromarray(image).save(path)
+    
+    
+
 def neural_style_transfer(content_image_path,
                           style_image_path,
                           style_layers=['conv1_1', 'conv2_1', 'conv3_1', 'conv4_1', 'conv5_1'],
                           content_layer="conv4_2",
                           style_layer_weights=[],
-                          alpha=1e-2,
-                          beta=1.0,
-                          gamma=0,
-                          num_iterations=1000,
-                          learning_rate=1):
+                          alpha=1e-1,  # content coefficient
+                          beta=10,  # style coefficient
+                          gamma=1e-4,  # variation coefficient
+                          num_iterations=40000,
+                          learning_rate=0.01,
+                          save_every=None):  # new argument for saving every n iterations
 
     device = get_best_device()
 
-    if style_layer_weights == []:
+    if style_layer_weights == []:  # check if user has provided custom style coefficients
         style_layer_weights = [1.0 for i in range(len(style_layers))]
 
     transform = transforms.Compose([
@@ -120,6 +136,9 @@ def neural_style_transfer(content_image_path,
 
     # load up the content image as a tensor
     content_image_tensor = generate_image_tensor(content_image_path)
+    print(f"Content image tensor size: {content_image_tensor.size()}")
+    
+    original_size = content_image_tensor.size()[1:]
     content_image_tensor = transform(content_image_tensor).unsqueeze(0).to(device).detach()
 
     # load up the vgg model
@@ -159,13 +178,13 @@ def neural_style_transfer(content_image_path,
         style_image_tensors.append(result_dict['style'][layer_idx])
 
     generated_image = nn.Parameter(content_image_tensor.clone(), requires_grad=True)  # start the generated image from the content image
-    optimizer = torch.optim.SGD([generated_image], lr=learning_rate)
+    optimizer = torch.optim.Adam([generated_image], lr=learning_rate)
 
-    frames = []
     losses = []
 
     mean = torch.tensor([0.485, 0.456, 0.406]).to(device).view(3, 1, 1)
     std = torch.tensor([0.229, 0.224, 0.225]).to(device).view(3, 1, 1)
+
 
     # optimization loop
     for i in tqdm(range(num_iterations)):
@@ -186,7 +205,7 @@ def neural_style_transfer(content_image_path,
         # content loss
         content_loss_val = content_loss(content_features, gen_content_feature)
 
-        # total variation loss
+        # total variation loss (for spatial smoothness)
         variation_loss_val = total_variation_loss(generated_image)
 
         total_loss = style_loss_val * beta + content_loss_val * alpha + variation_loss_val * gamma
@@ -195,19 +214,26 @@ def neural_style_transfer(content_image_path,
 
         total_loss.backward()
         optimizer.step()
-
+        
         result_dict.clear()
 
-        frame_copy = generated_image.clone().squeeze(0).detach()
-        frame_copy = frame_copy * std + mean
-        frame_copy = frame_copy.to('cpu')
-        frames.append(frame_copy)
+        # Save the generated image every save_every iterations
+        if save_every is not None and (i + 1) % save_every == 0:
+            with torch.no_grad():
+                temp_image = generated_image * std + mean
+                temp_image = torch.clamp(temp_image.squeeze(0).to('cpu').detach(), 0, 1)
+                print(original_size)
+                
+                temp_image = TF.resize(temp_image, original_size)
+                save_image(temp_image, f'intermediate_images/generated_image_{i+1}.png')
 
     for hook_handle in hook_handles:
         hook_handle.remove()
 
-    generated_image = generated_image * std + mean
-    final_frame = generated_image.squeeze(0).to('cpu').detach()
-    frames.append(final_frame)
+    final_frame = generated_image * std + mean
+    final_frame = torch.clamp(final_frame.squeeze(0).to('cpu').detach(), 0, 1)
+    final_frame = TF.resize(final_frame, original_size)
+    
+    save_image(final_frame, 'generated_image.png')
 
-    return final_frame, frames, losses
+    return final_frame, losses
