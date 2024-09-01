@@ -1,8 +1,8 @@
 # Neural Style Transfer
 
-Neural Style Transfer Implementation
+This repository is a PyTorch implementation of [Neural Style Transfer](https://arxiv.org/pdf/1508.06576)
 
-This repository is an implementation of Neural Style Transfer.
+![Sample Generated Image](generated_image.png)
 
 ## Dependencies
 
@@ -12,13 +12,17 @@ pip install torch torchvision tqdm Pillow
 
 ## Running the Algorithm
 
-You can run the neural style transfer algorithm using the `run.py` script. The script uses `argparse` to allow you to pass in the necessary parameters.
+
 
 ### Basic Usage
+
+You can run the neural style transfer algorithm using the `run.py` script.
 
 To run the algorithm with the default parameters, use the following command:
 
 python run.py content_image.jpg style_image.jpg
+
+The sample image above was generated with the default parameters.
 
 ### Custom Parameters
 
@@ -50,26 +54,3 @@ python run.py content_image.jpg style_image.jpg \
 - --num_iterations: Number of iterations for optimization. Default is 40000.
 - --learning_rate: Learning rate for optimization. Default is 0.01.
 - --save_every: Save the generated image every n iterations. Default is None.
-
-### Example
-
-Here's an example command to run the neural style transfer with specific settings:
-
-```
-python run.py content.jpg style.jpg \
-    --style_layers conv1_1 conv2_1 conv3_1 \
-    --content_layer conv4_2 \
-    --alpha 0.5 \
-    --beta 100 \
-    --num_iterations 10000 \
-    --learning_rate 0.02 \
-    --save_every 500
-```
-
-This will apply the style from style.jpg to content.jpg using the specified parameters.
-
-## Sample Output
-
-Here's an example of a generated image using this implementation (Starship x Starry Night):
-
-![Sample Generated Image](sample_gen.png)
