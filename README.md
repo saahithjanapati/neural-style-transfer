@@ -20,7 +20,7 @@ You can run the neural style transfer algorithm using the `run.py` script.
 
 To run the algorithm with the default parameters, use the following command:
 
-`python run.py content_image.jpg style_image.jpg`
+```python run.py content_image.jpg style_image.jpg```
 
 The sample image above was generated with the default parameters.
 
