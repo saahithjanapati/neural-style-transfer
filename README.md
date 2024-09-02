@@ -10,7 +10,7 @@ To install the necessary dependencies, you can use `pip`:
 
 pip install torch torchvision tqdm Pillow
 
-## Running the Algorithm
+## Usage
 
 
 
