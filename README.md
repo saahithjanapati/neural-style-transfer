@@ -8,7 +8,7 @@ This repository is a PyTorch implementation of [Neural Style Transfer](https://a
 
 To install the necessary dependencies, you can use `pip`:
 
-pip install torch torchvision tqdm Pillow
+`pip install torch torchvision tqdm Pillow`
 
 ## Usage
 
